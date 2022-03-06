@@ -2,45 +2,38 @@
 from typing import Any
 from typing import Callable as CallableType
 from typing import Dict, List, Optional
-from collections.abc import Iterator, Sequence
 from html import escape
-from .context import get_from_context
+from .context import MissingVariable, get_from_context
+from .exceptions import MustacheSyntaxError
+from .handlers import default_serializer, missing_partial_default, missing_variable_default
 from .tokenizer import Token, tokenize
+from .types import should_iterate
 
 
-def is_lambda(context: Any) -> bool:
-    """Shoule we traeat context value as a lambda?"""
-    return callable(context)
-
-
-def should_iterate(context: Any) -> bool:
-    """Should we iterate context value?"""
-    return isinstance(context, (Sequence, Iterator)) and not isinstance(context, str)
-
-
-def default_serializer(value: Any) -> str:
-    """By default, serialize variables as by stringifying"""
-    return str(value)
-
-
-# pylint:disable=too-many-locals,too-many-branches,too-many-statements
+# pylint:disable=too-many-locals,too-many-branches,too-many-statements,too-many-arguments
 def render(
     template: str,
     context: Dict,
     serializer: Optional[CallableType[[Any], str]] = None,
     partials: Optional[Dict] = None,
+    missing_variable_handler: Optional[CallableType[[str, str], str]] = None,
+    missing_partial_handler: Optional[CallableType[[str, str], str]] = None,
 ) -> str:
     """Render a mustache template"""
 
     serializer = serializer or default_serializer
+    missing_variable_handler = missing_variable_handler or missing_variable_default
+    missing_partial_handler = missing_partial_handler or missing_partial_default
+
     partials = partials or {}
 
-    output = ''
+    output: str = ''
     context_stack: List = [context]
     env_stack: List = []
     left_delimiter: str = '{{'
     right_delimiter: str = '}}'
-    pointer = 0
+    pointer: int = 0
+
     while True:
         try:
             (token, value, indentation), pointer = next(
@@ -60,7 +53,7 @@ def render(
             current_env = env_stack[-1]
             context_stack.pop()
 
-            _, env_pointer, [env_var, _] = current_env
+            env_name, env_pointer, [env_var, _] = current_env
 
             if should_iterate(env_var):
                 current_env[2][1] += 1
@@ -71,7 +64,14 @@ def render(
                     continue
                 except IndexError:
                     pass
-            # Check env is as expected
+
+            if env_name != value:
+                raise MustacheSyntaxError.from_template_pointer(
+                    f'Unexpected section end tag on line {{line_number}}. Expected "{env_name}" got "{value}"',
+                    template,
+                    pointer,
+                )
+
             env_stack.pop()
 
         if not current_context and len(context_stack) != 1:
@@ -80,18 +80,26 @@ def render(
                 env_stack.append([value, pointer, [False, 0]])
             continue
 
+        if token in [Token.NO_ESCAPE, Token.VARIABLE, Token.SECTION, Token.INVERTED]:
+            try:
+                variable = get_from_context(context_stack, value)
+            except MissingVariable:
+                variable = missing_variable_handler(
+                    value, f'{left_delimiter} {value} {right_delimiter}'
+                )
+        else:
+            variable = None
+
         if token is Token.LITERAL:
             output += value
 
         elif token is Token.NO_ESCAPE:
-            output += serializer(get_from_context(context_stack, value))
+            output += serializer(variable)
 
         elif token is Token.VARIABLE:
-            output += escape(serializer(get_from_context(context_stack, value)))
+            output += escape(serializer(variable))
 
         elif token in [Token.SECTION, Token.INVERTED]:
-            variable = get_from_context(context_stack, value)
-
             if token is Token.INVERTED:
                 variable = not variable
 
@@ -107,7 +115,11 @@ def render(
 
         elif token is Token.PARTIAL:
 
-            partial_template = partials.get(value, '')  # potentially raise error here
+            partial_template = partials.get(value)  # potentially raise error here
+            if partial_template is None:
+                partial_template = missing_partial_handler(
+                    value, f'{left_delimiter} {value} {right_delimiter}'
+                )
 
             if partial_template != '':
                 remove_trailing_indentation = False

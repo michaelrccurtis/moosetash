@@ -1,10 +1,7 @@
 """Generate tokens from a mustache template"""
 from typing import Iterator, Tuple
 from enum import Enum
-
-
-class MustacheSyntaxError(Exception):
-    """Error during parsing template"""
+from .exceptions import MustacheSyntaxError
 
 
 class Token(Enum):
@@ -54,7 +51,9 @@ def parse_tag(
     tag_end_pointer = template.find(right_delimiter, tag_pointer)
 
     if tag_end_pointer == -1:
-        raise MustacheSyntaxError('Unclosed tag')
+        raise MustacheSyntaxError.from_template_pointer(
+            'Unclosed tag on line {line_number}', template, pointer
+        )
 
     tag = template[tag_pointer:tag_end_pointer]
 
@@ -74,7 +73,6 @@ def find_next_pointer(
         indentation_pointer = 0
     else:
         indentation_pointer += 1
-        print('newline in temp', pre_tag_line, tag_start_pointer, indentation_pointer)
 
     before_tag = template[pre_tag_line:tag_start_pointer]
     after_tag = template[tag_end_pointer:post_tag_line]
@@ -123,7 +121,6 @@ def tokenize(
             )
 
             if is_standalone:
-                print('standalone', indentation_pointer, tag_start_pointer)
                 if tag_start_pointer - indentation_pointer > 0:
                     literal = literal[0 : -(tag_start_pointer - indentation_pointer)]
 

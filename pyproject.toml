@@ -1,8 +1,16 @@
 [tool.poetry]
 name = "moosetash"
-version = "0.1.0"
+version = "0.1.1"
 description = "Mustache template renderer"
 authors = ["Michael Curtis <michaelrccurtis@gmail.com>"]
+repository = "https://github.com/michaelrccurtis/moosetash"
+readme = "README.md"
+keywords = ["mustache", "template", "text"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Topic :: Text Processing :: Markup",
+    "Typing :: Typed"
+]
 
 [tool.poetry.dependencies]
 python = "^3.8"

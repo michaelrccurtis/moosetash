@@ -1,15 +1,16 @@
 import pytest
 from moosetash.tokenizer import Token, find_next_pointer, find_next_tag, parse_tag, tokenize
 
+FIND_NEXT_TAG_CASES = [
+    (('PRETAGSTRING{{ }}', 0, '{{'), ('PRETAGSTRING', 12)),
+    (('PRETAGSTRING[[ ]]', 0, '[['), ('PRETAGSTRING', 12)),
+    (('PRETAGSTRING[[ ]]', 0, '{{'), ('PRETAGSTRING[[ ]]', 17)),
+]
 
-def test_find_next_tag():
 
-    assert find_next_tag('PRETAGSTRING{{ }}', 0, left_delimiter='{{') == ('PRETAGSTRING', 12)
-    assert find_next_tag('PRETAGSTRING[[ ]]', 0, left_delimiter='[[') == ('PRETAGSTRING', 12)
-    assert find_next_tag('PRETAGSTRING[[ ]]', 0, left_delimiter='{{') == (
-        'PRETAGSTRING[[ ]]',
-        17,
-    )
+@pytest.mark.parametrize('test_input,expected', FIND_NEXT_TAG_CASES)
+def test_find_next_tag(test_input, expected):
+    assert find_next_tag(*test_input) == expected
 
 
 NEXT_POINTER_CASES = [
@@ -58,6 +59,17 @@ TOKENIZE_CASES = [
 @pytest.mark.parametrize('test_input,expected', TOKENIZE_CASES)
 def test_tokenizer(test_input, expected):
     assert list(tokenize(*test_input)) == expected
+
+
+def test_tokenizer_generator():
+    expected_tokens = [
+        ((Token.VARIABLE, 'variable', ''), 14),
+        ((Token.LITERAL, ' LITERAL', ''), 22),
+    ]
+    count = 0
+    for token in tokenize('{{ variable }} LITERAL'):
+        assert token == expected_tokens[count]
+        count += 1
 
 
 PARSE_TAG_CASES = [
