@@ -4,7 +4,7 @@ import pytest
 from moosetash import render
 
 
-def date_serializer(value: Any):
+def date_serializer(value: Any) -> str:
 
     if isinstance(value, dt.date):
         return value.strftime('%d-%m/%Y')
