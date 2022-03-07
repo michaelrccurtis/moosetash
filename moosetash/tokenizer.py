@@ -1,24 +1,38 @@
 """Generate tokens from a mustache template"""
 from typing import Iterator, Tuple
-from enum import Enum
+from enum import IntEnum
+import functools
 from .exceptions import MustacheSyntaxError
 
 
-class Token(Enum):
+class Token(IntEnum):
     """Mustache token type"""
 
-    LITERAL = 'LITERAL'
-    VARIABLE = 'VARIABLE'
-    COMMENT = '!'
-    SECTION = '#'
-    INVERTED = '^'
-    END = '/'
-    PARTIAL = '>'
-    SET_DELIMITER = '='
-    NO_ESCAPE_BRACE = '{'
-    NO_ESCAPE = '&'
+    LITERAL = 1
+    VARIABLE = 2
+    COMMENT = 3
+    SECTION = 4
+    INVERTED = 5
+    END = 6
+    PARTIAL = 7
+    SET_DELIMITER = 8
+    NO_ESCAPE_BRACE = 9
+    NO_ESCAPE = 10
 
 
+TOKENS = {
+    '!': Token.COMMENT,
+    '#': Token.SECTION,
+    '^': Token.INVERTED,
+    '/': Token.END,
+    '>': Token.PARTIAL,
+    '=': Token.SET_DELIMITER,
+    '{': Token.NO_ESCAPE_BRACE,
+    '&': Token.NO_ESCAPE,
+}
+
+
+@functools.lru_cache
 def find_next_tag(template: str, pointer: int, left_delimiter: str) -> Tuple[str, int]:
     """Find the next tag, and the literal between current pointer and that tag"""
 
@@ -30,6 +44,7 @@ def find_next_tag(template: str, pointer: int, left_delimiter: str) -> Tuple[str
     return (template[pointer:split_index], split_index)
 
 
+@functools.lru_cache
 def parse_tag(
     template: str, pointer: int, left_delimiter: str, right_delimiter: str
 ) -> Tuple[Tuple[Token, str], int]:
@@ -37,9 +52,9 @@ def parse_tag(
     tag_pointer = pointer + len(left_delimiter)
 
     try:
-        token = Token(template[tag_pointer])
+        token = TOKENS[template[tag_pointer]]
         tag_pointer += 1
-    except ValueError:
+    except KeyError:
         token = Token.VARIABLE
 
     if token is Token.NO_ESCAPE_BRACE:
@@ -60,6 +75,7 @@ def parse_tag(
     return ((token, tag.strip()), tag_end_pointer + len(right_delimiter))
 
 
+@functools.lru_cache
 def find_next_pointer(
     template: str, tag_start_pointer: int, tag_end_pointer: int
 ) -> Tuple[bool, int, int]:

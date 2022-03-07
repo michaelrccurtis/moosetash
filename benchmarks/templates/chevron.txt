@@ -1,0 +1,20 @@
+<div class=comment>
+    <span class=user>tommy</span>
+    <span class=body>If this gets to the front page I'll eat my hat!</span>
+    <span class=vote>625</span>
+</div>
+<div class=comment>
+    <span class=user>trololol</span>
+    <span class=body>this</span>
+    <span class=vote>-142</span>
+</div>
+<div class=comment>
+    <span class=user>mctom</span>
+    <span class=body>I wish thinking of test phrases was easier</span>
+    <span class=vote>83</span>
+</div>
+<div class=comment>
+    <span class=user>the_thinker</span>
+    <span class=body>Why is /u/trololol's post higher than ours?</span>
+    <span class=vote>36</span>
+</div>

@@ -29,3 +29,19 @@ def test_spec(test_data):
         render(test_data['template'], test_data['data'], partials=test_data.get('partials'))
         == test_data['expected']
     )
+
+
+@pytest.mark.parametrize('test_data', TESTS, ids=idfn)
+def test_spec_cached(test_data):
+    print(test_data['name'])
+    print(test_data['desc'])
+
+    assert (
+        render(
+            test_data['template'],
+            test_data['data'],
+            partials=test_data.get('partials'),
+            cache_tokens=True,
+        )
+        == test_data['expected']
+    )

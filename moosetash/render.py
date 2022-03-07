@@ -9,7 +9,6 @@ from .handlers import default_serializer, missing_partial_default, missing_varia
 from .tokenizer import Token, tokenize
 from .types import should_iterate
 
-
 # pylint:disable=too-many-locals,too-many-branches,too-many-statements,too-many-arguments
 def render(
     template: str,
@@ -18,6 +17,7 @@ def render(
     partials: Optional[Dict] = None,
     missing_variable_handler: Optional[CallableType[[str, str], str]] = None,
     missing_partial_handler: Optional[CallableType[[str, str], str]] = None,
+    cache_tokens: bool = False,
 ) -> str:
     """Render a mustache template"""
 
@@ -34,13 +34,26 @@ def render(
     right_delimiter: str = '}}'
     pointer: int = 0
 
+    tokens = []
+
+    if cache_tokens:
+        tokens = list(tokenize(template, 0, left_delimiter, right_delimiter))
+
     while True:
-        try:
-            (token, value, indentation), pointer = next(
-                tokenize(template, pointer, left_delimiter, right_delimiter)
-            )
-        except StopIteration:
-            break
+        if cache_tokens:
+            try:
+                (token, value, indentation), position_pointer = tokens[pointer]
+                pointer += 1
+            except IndexError:
+                break
+        else:
+            try:
+                (token, value, indentation), pointer = next(
+                    tokenize(template, pointer, left_delimiter, right_delimiter)
+                )
+                position_pointer = pointer
+            except StopIteration:
+                break
 
         current_context = context_stack[-1]
 
@@ -69,7 +82,7 @@ def render(
                 raise MustacheSyntaxError.from_template_pointer(
                     f'Unexpected section end tag on line {{line_number}}. Expected "{env_name}" got "{value}"',
                     template,
-                    pointer,
+                    position_pointer,
                 )
 
             env_stack.pop()

@@ -1,5 +1,5 @@
 """Utilities for accessing rendering context"""
-from typing import Any, List
+from typing import Any, List, Optional
 from .exceptions import ContextAccessError, MissingVariable
 
 
@@ -27,15 +27,18 @@ def get(obj: Any, variable: str) -> Any:
     raise MissingVariable(variable)
 
 
-def deep_get(context: Any, variable: str) -> Any:
+def deep_get(context: Any, variable: str, units: Optional[List[str]] = None) -> Any:
     """Recursively fetch a variable from context"""
     if variable == '.':
         # Handle implicit interpolation
         return context
 
-    units = variable.split('.')
     value = context
     has_match = False
+
+    if units is None:
+        units = variable.split('.')
+
     for unit in units:
         try:
             value = get(value, unit)
@@ -53,10 +56,11 @@ def get_from_context(contexts: List[Any], variable: str) -> Any:
     """Search list of context for a variable"""
 
     value = None
+    units = variable.split('.')
 
     for context in reversed(contexts):
         try:
-            value = deep_get(context, variable)
+            value = deep_get(context, variable, units)
             break
         except MissingVariable:
             pass

@@ -135,11 +135,24 @@ Moosetash is a typed python library, and aims for comprehensive type coverage. Y
 poetry run mypy .
 ```
 
+### Benchmarks
+
+This repo contains a series of benchmarks that can be run against different other Python mustache renderers, for comparing performance:
+
+-   [Chevron](https://github.com/noahmorrison/chevron) is currently the recommended Python implementation, and is generally fast and efficient.
+
+You can run the benchmark suite using poetry:
+
+```
+poetry run benchmark
+```
+
 ### TODO
 
 -   Support for lambdas
 -   Support for inheritance
--   Performance analysis
+-   Additional benchmarks
+-   Performance analysis and improvement
 
 ## License
 

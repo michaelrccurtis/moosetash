@@ -43,6 +43,14 @@ jupyter = ["ipython (>=7.8.0)", "tokenize-rt (>=3.2.0)"]
 uvloop = ["uvloop (>=0.15.2)"]
 
 [[package]]
+name = "chevron"
+version = "0.14.0"
+description = "Mustache templating language renderer"
+category = "dev"
+optional = true
+python-versions = "*"
+
+[[package]]
 name = "click"
 version = "8.0.4"
 description = "Composable command line interface toolkit"
@@ -236,10 +244,13 @@ category = "dev"
 optional = false
 python-versions = ">=3.6"
 
+[extras]
+benchmarks = []
+
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "b309c44f0ad5c059745d1ff7bf35b99ddd7edbb51b433c0c0f6cd24f71dac1fa"
+content-hash = "f94789fb86393dab7597bfbe0566983f38791b59d774ad366d7a0fe28528d139"
 
 [metadata.files]
 atomicwrites = [
@@ -274,6 +285,10 @@ black = [
     {file = "black-22.1.0-cp39-cp39-win_amd64.whl", hash = "sha256:373922fc66676133ddc3e754e4509196a8c392fec3f5ca4486673e685a421321"},
     {file = "black-22.1.0-py3-none-any.whl", hash = "sha256:3524739d76b6b3ed1132422bf9d82123cd1705086723bc3e235ca39fd21c667d"},
     {file = "black-22.1.0.tar.gz", hash = "sha256:a7c0192d35635f6fc1174be575cb7915e92e5dd629ee79fdaf0dcfa41a80afb5"},
+]
+chevron = [
+    {file = "chevron-0.14.0-py3-none-any.whl", hash = "sha256:fbf996a709f8da2e745ef763f482ce2d311aa817d287593a5b990d6d6e4f0443"},
+    {file = "chevron-0.14.0.tar.gz", hash = "sha256:87613aafdf6d77b6a90ff073165a61ae5086e21ad49057aa0e53681601800ebf"},
 ]
 click = [
     {file = "click-8.0.4-py3-none-any.whl", hash = "sha256:6a7a62563bbfabfda3a38f3023a1db4a35978c0abd76f6c9605ecd6554d6d9b1"},

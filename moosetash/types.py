@@ -1,5 +1,4 @@
 from typing import Any
-from collections.abc import Iterator, Sequence
 
 
 def is_lambda(context: Any) -> bool:
@@ -9,4 +8,11 @@ def is_lambda(context: Any) -> bool:
 
 def should_iterate(context: Any) -> bool:
     """Should we iterate context value?"""
-    return isinstance(context, (Sequence, Iterator)) and not isinstance(context, str)
+
+    if isinstance(context, str) or isinstance(context, dict):
+        return False
+    try:
+        _ = iter(context)
+        return True
+    except TypeError:
+        return False
