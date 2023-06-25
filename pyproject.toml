@@ -15,16 +15,17 @@ classifiers = [
 [tool.poetry.dependencies]
 python = "^3.8"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 pytest = "^7.0.1"
 pytest-cov = "^3.0.0"
 black = "^22.1.0"
 isort = "^5.10.1"
 mypy = "^0.931"
-chevron = {version = "^0.14.0", optional = true}
 
-[tool.poetry.extras]
-benchmarks = ["chevron"]
+
+[tool.poetry.group.benchmarks.dependencies]
+chevron = {version = "^0.14.0"}
+
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -38,10 +39,8 @@ testpaths = ["tests"]
 
 [tool.pylint.message_control]
 disable = """,
-  bad-continuation,
   too-few-public-methods,
   relative-import,
-  no-self-use,
   singleton-comparison,
   import-error,
   no-name-in-module,

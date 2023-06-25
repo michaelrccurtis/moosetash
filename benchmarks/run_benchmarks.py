@@ -59,10 +59,12 @@ def get_benchmarks():
 
 def run_benchmarks(samples: int):
     """Run the benchmark suite for each library"""
+
+    max_lib_name = max(len(name) for name, _ in TESTS)
     for name, template, context, expected in get_benchmarks():
-        print(f'Collecting samples for benchmark {name}')
+        print(f'Benchmark {name}:')
         for lib_name, test_func in TESTS:
-            print(f'Running benchmark {name} for {lib_name}')
+            print(f'\t{lib_name}:', end='', flush=True)
 
             def test(
                 test_func=test_func,
@@ -88,7 +90,7 @@ def run_benchmarks(samples: int):
 
             time = timeit(test, number=samples)
 
-            print('Time:', time)
+            print(' ' * (max_lib_name - len(lib_name)), 'Time:', round(time, 3))
 
 
 def run():

@@ -15,9 +15,11 @@ class Token(IntEnum):
     INVERTED = 5
     END = 6
     PARTIAL = 7
-    SET_DELIMITER = 8
-    NO_ESCAPE_BRACE = 9
-    NO_ESCAPE = 10
+    PARENT = 8
+    SUBSTITUTION = 9
+    SET_DELIMITER = 10
+    NO_ESCAPE_BRACE = 11
+    NO_ESCAPE = 12
 
 
 TOKENS = {
@@ -26,6 +28,8 @@ TOKENS = {
     '^': Token.INVERTED,
     '/': Token.END,
     '>': Token.PARTIAL,
+    '<': Token.PARENT,
+    '$': Token.SUBSTITUTION,
     '=': Token.SET_DELIMITER,
     '{': Token.NO_ESCAPE_BRACE,
     '&': Token.NO_ESCAPE,

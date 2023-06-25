@@ -7,7 +7,52 @@ from .context import MissingVariable, get_from_context
 from .exceptions import MustacheSyntaxError
 from .handlers import default_serializer, missing_partial_default, missing_variable_default
 from .tokenizer import Token, tokenize
-from .types import should_iterate
+from .types import should_iterate, is_lambda
+
+
+def find_closing_pointer(section_name, iterator):
+    count = 1
+    for (token, value, _), pointer in iterator:
+        if section_name == value:
+            if token in [Token.SECTION, Token.INVERTED]:
+                count += 1
+
+            if token is Token.END:
+                count -= 1
+
+            if count == 0:
+                return pointer
+
+
+def find_closing_pointer_cached(current_pointer, section_name, tokens):
+    count = 1
+    for idx, ((token, value, _), _) in enumerate(tokens[current_pointer:]):
+        if section_name == value:
+            if token in [Token.SECTION, Token.INVERTED]:
+                count += 1
+
+            if token is Token.END:
+                count -= 1
+
+            if count == 0:
+                return current_pointer + idx + 1
+
+
+def find_closing_pointer_start(section_name, iterator, current_pointer):
+    count = 1
+    previous_pointer = current_pointer
+    for (token, value, _), pointer in iterator:
+        if section_name == value:
+            if token in [Token.SECTION, Token.INVERTED]:
+                count += 1
+
+            if token is Token.END:
+                count -= 1
+
+            if count == 0:
+                return previous_pointer, pointer
+        previous_pointer = pointer
+
 
 # pylint:disable=too-many-locals,too-many-branches,too-many-statements,too-many-arguments
 def render(
@@ -17,6 +62,8 @@ def render(
     partials: Optional[Dict] = None,
     missing_variable_handler: Optional[CallableType[[str, str], str]] = None,
     missing_partial_handler: Optional[CallableType[[str, str], str]] = None,
+    left_delimiter: Optional[str] = None,
+    right_delimiter: Optional[str] = None,
     cache_tokens: bool = False,
 ) -> str:
     """Render a mustache template"""
@@ -30,9 +77,10 @@ def render(
     output: str = ''
     context_stack: List = [context]
     env_stack: List = []
-    left_delimiter: str = '{{'
-    right_delimiter: str = '}}'
     pointer: int = 0
+
+    left_delimiter = left_delimiter or '{{'
+    right_delimiter = right_delimiter or '}}'
 
     tokens = []
 
@@ -107,14 +155,66 @@ def render(
             output += value
 
         elif token is Token.NO_ESCAPE:
+            if is_lambda(variable):
+                variable = render(
+                    str(variable()),
+                    current_context,
+                    serializer=serializer,
+                    partials=partials,
+                )
             output += serializer(variable)
 
         elif token is Token.VARIABLE:
+            if is_lambda(variable):
+                variable = render(
+                    str(variable()),
+                    current_context,
+                    serializer=serializer,
+                    partials=partials,
+                )
             output += escape(serializer(variable))
 
         elif token in [Token.SECTION, Token.INVERTED]:
             if token is Token.INVERTED:
-                variable = not variable
+                if is_lambda(variable):
+                    variable = False
+                else:
+                    variable = not variable
+
+            if not variable:
+                if cache_tokens:
+                    skip_pointer = find_closing_pointer_cached(position_pointer, value, tokens)
+                else:
+                    skip_pointer = find_closing_pointer(
+                        value,
+                        tokenize(template, pointer, left_delimiter, right_delimiter),
+                    )
+                if skip_pointer is not None:
+                    pointer = skip_pointer
+                    continue
+
+            if is_lambda(variable):
+                if cache_tokens:
+                    skip_pointer = find_closing_pointer_cached(position_pointer, value, tokens)
+                else:
+                    section_end_pointer, skip_pointer = find_closing_pointer_start(
+                        value,
+                        tokenize(template, pointer, left_delimiter, right_delimiter),
+                        position_pointer,
+                    )
+
+                if skip_pointer is not None:
+                    lambda_output = render(
+                        str(variable(template[position_pointer:section_end_pointer])),
+                        current_context,
+                        serializer=serializer,
+                        partials=partials,
+                        left_delimiter=left_delimiter,
+                        right_delimiter=right_delimiter,
+                    )
+                    output += lambda_output
+                    pointer = skip_pointer
+                    continue
 
             if should_iterate(variable):
                 try:
@@ -127,7 +227,6 @@ def render(
             env_stack.append([value, pointer, [variable, 0]])
 
         elif token is Token.PARTIAL:
-
             partial_template = partials.get(value)  # potentially raise error here
             if partial_template is None:
                 partial_template = missing_partial_handler(
@@ -136,6 +235,7 @@ def render(
 
             if partial_template != '':
                 remove_trailing_indentation = False
+
                 if partial_template.endswith('\n'):
                     remove_trailing_indentation = True
 
@@ -150,5 +250,9 @@ def render(
                     partial_template, current_context, serializer=serializer, partials=partials
                 )
                 output += partial_output
+
+        elif token is Token.SUBSTITUTION:
+            context_stack.append(True)
+            env_stack.append([value, pointer, [None, 0]])
 
     return output
