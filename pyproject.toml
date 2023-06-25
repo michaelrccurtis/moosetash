@@ -40,7 +40,6 @@ testpaths = ["tests"]
 [tool.pylint.message_control]
 disable = """,
   too-few-public-methods,
-  relative-import,
   singleton-comparison,
   import-error,
   no-name-in-module,

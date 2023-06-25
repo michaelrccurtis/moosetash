@@ -2,8 +2,6 @@ import json
 from pathlib import Path
 import pytest
 from moosetash import render
-import pytest
-from copy import copy
 
 SPECS_DIR = Path(__file__).parent.parent / 'spec' / 'specs'
 TESTS = []
@@ -56,17 +54,17 @@ def test_spec(test_data):
     )
 
 
-# @pytest.mark.parametrize('test_data', TESTS, ids=idfn)
-# def test_spec_cached(test_data):
-#     print(test_data['name'])
-#     print(test_data['desc'])
+@pytest.mark.parametrize('test_data', TESTS, ids=idfn)
+def test_spec_cached(test_data):
+    print(test_data['name'])
+    print(test_data['desc'])
 
-#     assert (
-#         render(
-#             test_data['template'],
-#             parse_code(test_data['data']),
-#             partials=test_data.get('partials'),
-#             cache_tokens=True,
-#         )
-#         == test_data['expected']
-#     )
+    assert (
+        render(
+            test_data['template'],
+            parse_code(test_data['data']),
+            partials=test_data.get('partials'),
+            cache_tokens=True,
+        )
+        == test_data['expected']
+    )

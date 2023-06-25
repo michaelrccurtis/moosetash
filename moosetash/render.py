@@ -7,12 +7,13 @@ from .context import MissingVariable, get_from_context
 from .exceptions import MustacheSyntaxError
 from .handlers import default_serializer, missing_partial_default, missing_variable_default
 from .tokenizer import Token, tokenize
-from .types import should_iterate, is_lambda
+from .types import invoke_lambda, is_lambda, should_iterate
 
 
-def find_closing_pointer(section_name, iterator):
+def find_closing_pointer_limits_cached(current_pointer: int, section_name: str, tokens):
     count = 1
-    for (token, value, _), pointer in iterator:
+    previous_position_pointer = tokens[current_pointer][1]
+    for idx, ((token, value, _), position_pointer) in enumerate(tokens[current_pointer:]):
         if section_name == value:
             if token in [Token.SECTION, Token.INVERTED]:
                 count += 1
@@ -21,24 +22,16 @@ def find_closing_pointer(section_name, iterator):
                 count -= 1
 
             if count == 0:
-                return pointer
+                return previous_position_pointer, current_pointer + idx + 1
+        previous_position_pointer = position_pointer
+    return None, None
 
 
-def find_closing_pointer_cached(current_pointer, section_name, tokens):
-    count = 1
-    for idx, ((token, value, _), _) in enumerate(tokens[current_pointer:]):
-        if section_name == value:
-            if token in [Token.SECTION, Token.INVERTED]:
-                count += 1
-
-            if token is Token.END:
-                count -= 1
-
-            if count == 0:
-                return current_pointer + idx + 1
-
-
-def find_closing_pointer_start(section_name, iterator, current_pointer):
+def find_closing_pointer_limits(
+    current_pointer: int,
+    section_name: str,
+    iterator,
+):
     count = 1
     previous_pointer = current_pointer
     for (token, value, _), pointer in iterator:
@@ -52,6 +45,7 @@ def find_closing_pointer_start(section_name, iterator, current_pointer):
             if count == 0:
                 return previous_pointer, pointer
         previous_pointer = pointer
+    return None, None
 
 
 # pylint:disable=too-many-locals,too-many-branches,too-many-statements,too-many-arguments
@@ -157,7 +151,7 @@ def render(
         elif token is Token.NO_ESCAPE:
             if is_lambda(variable):
                 variable = render(
-                    str(variable()),
+                    invoke_lambda(variable, name=value),
                     current_context,
                     serializer=serializer,
                     partials=partials,
@@ -167,7 +161,7 @@ def render(
         elif token is Token.VARIABLE:
             if is_lambda(variable):
                 variable = render(
-                    str(variable()),
+                    invoke_lambda(variable, name=value),
                     current_context,
                     serializer=serializer,
                     partials=partials,
@@ -183,9 +177,10 @@ def render(
 
             if not variable:
                 if cache_tokens:
-                    skip_pointer = find_closing_pointer_cached(position_pointer, value, tokens)
+                    _, skip_pointer = find_closing_pointer_limits_cached(pointer, value, tokens)
                 else:
-                    skip_pointer = find_closing_pointer(
+                    _, skip_pointer = find_closing_pointer_limits(
+                        position_pointer,
                         value,
                         tokenize(template, pointer, left_delimiter, right_delimiter),
                     )
@@ -193,19 +188,31 @@ def render(
                     pointer = skip_pointer
                     continue
 
+                raise MustacheSyntaxError.from_template_pointer(
+                    f'Unclosed section "{value}" beginning on line {{line_number}}',
+                    template,
+                    position_pointer,
+                )
+
             if is_lambda(variable):
                 if cache_tokens:
-                    skip_pointer = find_closing_pointer_cached(position_pointer, value, tokens)
+                    section_end_pointer, skip_pointer = find_closing_pointer_limits_cached(
+                        pointer, value, tokens
+                    )
                 else:
-                    section_end_pointer, skip_pointer = find_closing_pointer_start(
+                    section_end_pointer, skip_pointer = find_closing_pointer_limits(
+                        position_pointer,
                         value,
                         tokenize(template, pointer, left_delimiter, right_delimiter),
-                        position_pointer,
                     )
 
                 if skip_pointer is not None:
                     lambda_output = render(
-                        str(variable(template[position_pointer:section_end_pointer])),
+                        invoke_lambda(
+                            variable,
+                            name=value,
+                            template=template[position_pointer:section_end_pointer],
+                        ),
                         current_context,
                         serializer=serializer,
                         partials=partials,
@@ -250,6 +257,43 @@ def render(
                     partial_template, current_context, serializer=serializer, partials=partials
                 )
                 output += partial_output
+
+        elif token is Token.PARENT:
+            partial_template = partials.get(value)  # potentially raise error here
+            if partial_template is None:
+                partial_template = missing_partial_handler(
+                    value, f'{left_delimiter} {value} {right_delimiter}'
+                )
+            if partial_template != '':
+                remove_trailing_indentation = False
+
+                if partial_template.endswith('\n'):
+                    remove_trailing_indentation = True
+
+                partial_template = indentation + f'\n{indentation}'.join(
+                    partial_template.split('\n')
+                )
+
+                if remove_trailing_indentation:
+                    partial_template = partial_template[: -len(indentation)]
+
+                partial_output = render(
+                    partial_template, current_context, serializer=serializer, partials=partials
+                )
+                output += partial_output
+
+            if cache_tokens:
+                section_end_pointer, skip_pointer = find_closing_pointer_limits_cached(
+                    pointer, value, tokens
+                )
+            else:
+                section_end_pointer, skip_pointer = find_closing_pointer_limits(
+                    position_pointer,
+                    value,
+                    tokenize(template, pointer, left_delimiter, right_delimiter),
+                )
+
+            pointer = skip_pointer
 
         elif token is Token.SUBSTITUTION:
             context_stack.append(True)

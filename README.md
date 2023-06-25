@@ -149,7 +149,6 @@ poetry run benchmark
 
 ### TODO
 
--   Support for lambdas
 -   Support for inheritance
 -   Additional benchmarks
 -   Performance analysis and improvement

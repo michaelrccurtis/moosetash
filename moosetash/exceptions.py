@@ -16,6 +16,10 @@ class ContextAccessError(Exception):
     """Error getting a variable from context"""
 
 
+class LambdaException(ContextAccessError):
+    """Partial is missing from partials dictionary"""
+
+
 class MissingVariable(Exception):
     """Variable is missing from context"""
 
