@@ -1,11 +1,15 @@
 """Render a Mustache template"""
-from typing import Any
-from typing import Callable as CallableType
-from typing import Dict, List, Optional
 from html import escape
+from typing import Any, Dict, List, Optional
+from typing import Callable as CallableType
+
 from .context import MissingVariable, get_from_context
 from .exceptions import MustacheSyntaxError
-from .handlers import default_serializer, missing_partial_default, missing_variable_default
+from .handlers import (
+    default_serializer,
+    missing_partial_default,
+    missing_variable_default,
+)
 from .tokenizer import Token, tokenize
 from .types import invoke_lambda, is_lambda, should_iterate
 
@@ -59,6 +63,7 @@ def render(
     left_delimiter: Optional[str] = None,
     right_delimiter: Optional[str] = None,
     cache_tokens: bool = False,
+    escape_html: bool = True,
 ) -> str:
     """Render a mustache template"""
 
@@ -166,7 +171,11 @@ def render(
                     serializer=serializer,
                     partials=partials,
                 )
-            output += escape(serializer(variable))
+
+            if escape_html:
+                output += escape(serializer(variable))
+            else:
+                output += serializer(variable)
 
         elif token in [Token.SECTION, Token.INVERTED]:
             if token is Token.INVERTED:
